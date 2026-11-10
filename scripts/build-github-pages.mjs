@@ -1,0 +1,14 @@
+import {spawnSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const repository=process.env.GITHUB_REPOSITORY||'';
+const [owner,slug]=repository.split('/');
+const base=process.env.FLOW_PAGES_BASE_PATH||(slug?(slug.toLowerCase()===`${owner}.github.io`.toLowerCase()?'/':`/${slug}/`):'/ruhub-flow/');
+if(!/^\/(?:[A-Za-z0-9._-]+\/)*$/.test(base))throw Error('FLOW_PAGES_BASE_PATH must be / or /repository/');
+const api=process.env.FLOW_API_ORIGIN||'https://ruhub-signal-flow.hubwork-1806.chatgpt.site';
+const parsed=new URL(api);if(parsed.protocol!=='https:'||parsed.pathname!=='/'||parsed.search||parsed.hash||parsed.username||parsed.password)throw Error('FLOW_API_ORIGIN must be an HTTPS origin without a path or credentials');
+const result=spawnSync(process.execPath,['node_modules/vite/bin/vite.js','build','--config','deployment/github-pages/vite.config.ts'],{cwd:root,env:{...process.env,FLOW_PAGES_BASE_PATH:base,FLOW_API_ORIGIN:parsed.origin},stdio:'inherit'});
+if(result.status!==0)process.exit(result.status||1);
+writeFileSync(new URL('../outputs/github-pages/.nojekyll',import.meta.url),'');
+console.log(`GitHub Pages build ready: ${base}`);
