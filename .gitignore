@@ -2,3 +2,11 @@ node_modules/
 outputs/
 .env*
 *.tsbuildinfo
+
+data/
+backups/
+logs/
+runtime/
+*.sqlite*
+PUBLIC_URL.txt
+*private*.json

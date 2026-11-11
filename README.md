@@ -48,3 +48,9 @@ npm run build
 ## Личные кабинеты
 
 Встроенная регистрация по логину и паролю; Google Cloud и Supabase не нужны. Сохраните резервный код после регистрации. [Инструкция](docs/ACCOUNTS_RU.md).
+
+## Свой сервер Windows
+
+Полный сервер SQLite и браузерная часть: `pnpm selfhost:build`. Запуск с переносимым Node.js 24: `node outputs/selfhost/launcher.mjs`. Для доступа через интернет нужен официальный cloudflared в `outputs/selfhost/runtime/cloudflared.exe`; затем `node outputs/selfhost/launcher.mjs --internet`.
+
+Подробная инструкция: [deployment/selfhost/READ_ME_RU.txt](deployment/selfhost/READ_ME_RU.txt). Runtime и личная база распространяются отдельно, в приватном Windows-комплекте. База, пароли, ссылки доступа и резервные копии в этот репозиторий не включаются. `data` сохраняется при пересборке.

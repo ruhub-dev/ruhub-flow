@@ -1,6 +1,6 @@
 {
   "name": "ruhub-flow",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -8,12 +8,17 @@
   },
   "scripts": {
     "build": "node scripts/build-github-pages.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "selfhost:build": "node scripts/build-selfhost.mjs",
+    "selfhost:test": "node tests/selfhost.mjs",
+    "test:accounts": "node --test tests/account-access.test.mjs"
   },
   "dependencies": {
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "lucide-react": "1.31.0"
+    "lucide-react": "1.31.0",
+    "@noble/hashes": "2.4.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
