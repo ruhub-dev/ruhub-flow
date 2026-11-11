@@ -1,4 +1,7 @@
 import {createServer} from 'node:http';
+import {gzip} from 'node:zlib';
+import {promisify} from 'node:util';
+const compress=promisify(gzip);
 import {readFileSync,existsSync,statSync,writeFileSync,unlinkSync,readdirSync} from 'node:fs';
 import {resolve,join,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -29,7 +32,10 @@ const server=createServer(async(incoming,outgoing)=>{
  async function send(response:Response){
   if(isPages){response.headers.set('Access-Control-Allow-Origin',pagesOrigin);response.headers.append('Vary','Origin')}
   response.headers.set('X-Content-Type-Options','nosniff');response.headers.set('Referrer-Policy','no-referrer');response.headers.set('X-Frame-Options','DENY');
-  outgoing.writeHead(response.status,Object.fromEntries(response.headers));outgoing.end(Buffer.from(await response.arrayBuffer()));
+  let payload=Buffer.from(await response.arrayBuffer());
+  const compressible=/^\/api\/(project|library)(?:\?|$)|^\/assets\//.test(incoming.url||'');
+  if(compressible&&payload.length>=1024){response.headers.append('Vary','Accept-Encoding');if(/\bgzip\b/.test(incoming.headers['accept-encoding']||'')){payload=await compress(payload);response.headers.set('Content-Encoding','gzip');response.headers.delete('Content-Length')}}
+  outgoing.writeHead(response.status,Object.fromEntries(response.headers));outgoing.end(payload);
  }
  let response:Response;
  try{

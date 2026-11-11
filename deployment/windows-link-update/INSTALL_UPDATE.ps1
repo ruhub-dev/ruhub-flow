@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
 Add-Type -AssemblyName System.Windows.Forms
-Write-Host 'Обновление RUHUB Flow 3.0.1: мобильная версия, библиотека и удаление схем' -ForegroundColor Cyan
+Write-Host 'Обновление RUHUB Flow 3.1: ускорение подключения и синхронизации' -ForegroundColor Cyan
 Write-Host 'Сначала остановите прежний START_INTERNET.cmd сочетанием Ctrl+C.'
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
 $dialog.Description = 'Выберите существующую папку RUHUB-Flow (в ней лежат START_INTERNET.cmd, data и runtime)'
@@ -15,7 +15,7 @@ $payload = Join-Path $PSScriptRoot 'files'
 $allowed = @('app','public','migrations','launcher.mjs','github-publisher.mjs','github-request.ps1','SETUP_GITHUB.cmd','SETUP_GITHUB.ps1','PERMANENT_LINK_RU.txt')
 $actual = @(Get-ChildItem -LiteralPath $payload -Force)
 if (@($actual | Where-Object { $_.Name -notin $allowed }).Count -gt 0) { throw 'Неверный состав обновления.' }
-$backup = Join-Path $target ('updates\before-v3-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$backup = Join-Path $target ('updates\before-v3.1-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $null = New-Item -ItemType Directory -Path $backup -Force
 function Copy-Tree([string]$Source, [string]$Destination) {
     if (Test-Path -LiteralPath $Source -PathType Container) {

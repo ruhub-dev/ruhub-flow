@@ -34,6 +34,13 @@ try{
  assert.equal((await call('/api/account',{token:guest,body:{action:'attach',id:p.id,key:editor}})).status,200);
  assert.equal((await call('/api/account',{token:guest})).data.projects[0].role,'editor');
  assert.equal((await call(path,{key:p.key,session:owner})).data.document.title,'Updated on own server');
+ const current=(await call(path,{key:p.key,session:owner})).data;
+ const unchanged=await call(path+'&revision='+current.revision,{key:editor,session:guest});assert.equal(unchanged.status,200);assert.equal(unchanged.data.unchanged,true);assert.equal(unchanged.data.document,undefined);assert.equal(unchanged.data.role,'editor');
+ assert.equal((await call(path+'&revision='+current.revision,{key:'invalid',session:guest})).status,403);
+ assert.equal((await call(path+'&revision='+current.revision,{key:p.key,session:guest})).status,403);
+ const stale=await call(path+'&revision='+(current.revision-1),{key:editor,session:guest});assert.equal(stale.data.document.title,current.document.title);
+ const packed=await fetch(base+'/api/library',{headers:{Authorization:'Bearer '+owner,Origin:pages,'Accept-Encoding':'gzip'}});assert.equal(packed.headers.get('Content-Encoding'),'gzip');assert.equal(packed.headers.get('Access-Control-Allow-Origin'),pages);assert((await packed.json()).items.length>0);
+ const plain=await fetch(base+'/api/library',{headers:{Authorization:'Bearer '+owner,'Accept-Encoding':'identity'}});assert.equal(plain.headers.get('Content-Encoding'),null);
  const library=(await call('/api/library',{token:owner,headers:{Origin:pages}}));assert.equal(library.status,200);assert(library.data.items.length>0);
  const sharedTemplate={brand:'RuHub',model:'Persistent shared test',group:'QA',ports:[{id:'out',label:'OUT',dir:'out',type:'SDI',connector:'BNC'}]};
  assert.equal((await call('/api/library',{token:guest,body:{action:'create',project:p.id,key:viewer,template:sharedTemplate}})).status,403);
@@ -54,5 +61,5 @@ try{
  assert.equal((await call('/api/project?id='+disposable.id,{key:disposable.key,session:recovery.data.token})).status,403);
  assert((await call('/api/library',{token:guest})).data.items.some(x=>x.template.model===sharedTemplate.model));
  await stop();const db=new DatabaseSync(join(root,'data/flow.sqlite'));assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0);db.close();assert(readdirSync(join(root,'backups')).filter(x=>x.endsWith('.sqlite')).length>=2);
- console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; shared library persistence; concurrent output exclusivity; restart persistence; recovery; link revocation; project deletion; backups.');
+ console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; shared library persistence; concurrent output exclusivity; restart persistence; recovery; link revocation; project deletion; compact authenticated polling; gzip responses; backups.');
 }finally{await stop();rmSync(root,{recursive:true,force:true})}
