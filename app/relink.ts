@@ -1,5 +1,5 @@
-import {canConnect} from './model';
-import type {Doc,Cable,Op} from './model';
+import {canConnect} from './model.ts';
+import type {Doc,Cable,Op} from './model.ts';
 export type CableEnd='from'|'to';
 export const endpoints=(e:Cable)=>({from:e.from,out:e.out,to:e.to,input:e.input});
 export function sameEndpoints(a:Cable,b:Cable){return a.from===b.from&&a.out===b.out&&a.to===b.to&&a.input===b.input}
@@ -12,6 +12,7 @@ export function relinkCandidate(doc:Doc,e:Cable,end:CableEnd,nodeId:string,portI
  if(!canConnect(p,fixed))return {error:'Несовместимый сигнал или разъём'};
  if(nodeId===fixedNode.id)return {error:'Нельзя соединить устройство само с собой'};
  const next={...e,...(end==='from'?{from:nodeId,out:portId}:{to:nodeId,input:portId})};
+ if(Object.values(doc.edges).some(other=>other.id!==e.id&&other.from===next.from&&other.out===next.out))return {error:'Этот выход уже занят другим кабелем'};
  if(Object.values(doc.edges).some(other=>other.id!==e.id&&other.to===next.to&&other.input===next.input))return {error:'Этот вход уже занят другим кабелем'};
  return {cable:next};
 }
@@ -23,6 +24,7 @@ export function connectionCandidate(doc:Doc,origin:{node:string;port:string},tar
  if(origin.node===target.node)return {error:'Нельзя соединить устройство само с собой'};
  if(!canConnect(a,b))return {error:'Несовместимый сигнал, разъём или направление'};
  const out=a.dir==='out'?origin:target,input=a.dir==='in'?origin:target;
+ if(Object.values(doc.edges).some(e=>e.from===out.node&&e.out===out.port))return {error:'Этот выход уже занят другим кабелем'};
  if(Object.values(doc.edges).some(e=>e.to===input.node&&e.input===input.port))return {error:'Этот вход уже занят другим кабелем'};
  return {cable:{id,from:out.node,out:out.port,to:input.node,input:input.port,label:'',length:'',type:a.type}};
 }

@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - name: Check permanent frontend and updater
-        run: node --test tests/stable-link.test.mjs tests/backend-runtime.test.mjs
+        run: node --test tests/stable-link.test.mjs tests/backend-runtime.test.mjs tests/touch-viewport.test.mjs tests/connection-rules.test.mjs tests/library-service.test.mjs
       - run: npm run build
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9

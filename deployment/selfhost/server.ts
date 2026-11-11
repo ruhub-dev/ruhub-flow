@@ -3,6 +3,7 @@ import {readFileSync,existsSync,statSync,writeFileSync,unlinkSync,readdirSync} f
 import {resolve,join,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {openDatabase,backupDatabase,importSnapshot} from './database.mjs';
+import {handleLibrary} from '../../app/library-service.ts';
 import {handleAccount} from '../../app/account-service.ts';
 import {authResponse} from '../../app/auth-response.ts';
 import {projectHandler} from '../../app/project-service.ts';
@@ -60,6 +61,7 @@ const server=createServer(async(incoming,outgoing)=>{
     const action=/^\/api\/auth\/(register|login|recover)$/.exec(url.pathname)?.[1];
     if(action)response=await authResponse(request,db,pagesOrigin,action as 'register'|'login'|'recover');
     else if(url.pathname==='/api/account')response=await handleAccount(request,db);
+    else if(url.pathname==='/api/library')response=await handleLibrary(request,db);
     else if(url.pathname==='/api/project')response=await handleProject(request);
     else response=fail(404,'Адрес не найден');
    }

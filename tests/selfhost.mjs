@@ -34,10 +34,20 @@ try{
  assert.equal((await call('/api/account',{token:guest,body:{action:'attach',id:p.id,key:editor}})).status,200);
  assert.equal((await call('/api/account',{token:guest})).data.projects[0].role,'editor');
  assert.equal((await call(path,{key:p.key,session:owner})).data.document.title,'Updated on own server');
- await stop();await start();assert.equal((await call(path,{key:p.key,session:owner})).data.document.title,'Updated on own server');
+ const library=(await call('/api/library',{token:owner,headers:{Origin:pages}}));assert.equal(library.status,200);assert(library.data.items.length>0);
+ const sharedTemplate={brand:'RuHub',model:'Persistent shared test',group:'QA',ports:[{id:'out',label:'OUT',dir:'out',type:'SDI',connector:'BNC'}]};
+ assert.equal((await call('/api/library',{token:guest,body:{action:'create',project:p.id,key:viewer,template:sharedTemplate}})).status,403);
+ assert.equal((await call('/api/library',{token:guest,headers:{Origin:pages},body:{action:'create',project:p.id,key:editor,template:sharedTemplate}})).status,200);
+ const nodes=Object.fromEntries(['source','sink1','sink2'].map((id,i)=>[id,{id,brand:'QA',model:id,label:id,x:i*300,y:0,color:'#579cf3',note:'',ports:[{id:'port',label:'SDI',type:'SDI',connector:'BNC',dir:i===0?'out':'in'}]}]));
+ assert.equal((await call(path,{key:p.key,session:owner,body:{ops:Object.values(nodes).map(n=>({kind:'node',id:n.id,value:n}))}})).status,200);
+ const cable=(id,to)=>({kind:'edge',id,value:{id,from:'source',out:'port',to,input:'port',type:'SDI',label:'',length:''}});
+ const claims=await Promise.all([call(path,{key:p.key,session:owner,body:{ops:[cable('cable1','sink1')]}}),call(path,{key:editor,session:guest,body:{ops:[cable('cable2','sink2')]}})]);
+ assert.equal(claims.filter(x=>x.status===200).length,1);assert.equal(claims.filter(x=>x.status===400).length,1);
+ assert.equal(Object.keys((await call(path,{key:p.key,session:owner})).data.document.edges).length,1);
+ await stop();await start();assert((await call('/api/library',{token:guest})).data.items.some(x=>x.template.model===sharedTemplate.model));assert.equal((await call(path,{key:p.key,session:owner})).data.document.title,'Updated on own server');
  const login=await call('/api/auth/login',{headers:{Origin:pages},body:{username:'QA-SELFHOST-A@EXAMPLE.TEST',password}});assert.equal(login.status,200);
  const recovery=await call('/api/auth/recover',{body:{username:'qa-selfhost-a@example.test',password:'new12345',recovery:a.data.recovery}});assert.equal(recovery.status,200);assert.equal((await call(path,{key:p.key,session:owner})).status,401);
  assert.equal((await call(path,{key:p.key,session:recovery.data.token,body:{action:'share',rotate:true}})).status,200);assert.equal((await call(path,{key:editor,session:guest})).status,403);assert.equal((await call('/api/account',{token:guest})).data.projects.length,0);
  await stop();const db=new DatabaseSync(join(root,'data/flow.sqlite'));assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0);db.close();assert(readdirSync(join(root,'backups')).filter(x=>x.endsWith('.sqlite')).length>=2);
- console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; restart persistence; recovery; link revocation; backups.');
+ console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; shared library persistence; concurrent output exclusivity; restart persistence; recovery; link revocation; backups.');
 }finally{await stop();rmSync(root,{recursive:true,force:true})}

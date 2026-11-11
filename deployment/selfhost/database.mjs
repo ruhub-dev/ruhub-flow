@@ -2,7 +2,7 @@ import {DatabaseSync,backup} from 'node:sqlite';
 import {mkdirSync,readdirSync,readFileSync,existsSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
-export const persistentTables=['flow_users','local_credentials','projects','project_accounts','account_owned_projects','revisions'];
+export const persistentTables=['flow_users','local_credentials','projects','project_accounts','account_owned_projects','revisions','flow_library'];
 export function openDatabase(root){
  mkdirSync(join(root,'data'),{recursive:true});
  const sqlite=new DatabaseSync(join(root,'data','flow.sqlite'));
@@ -19,7 +19,7 @@ export function openDatabase(root){
 }
 export function importSnapshot(db,snapshot){
  if(snapshot.format!=='ruhub-flow-migration-v1'||!snapshot.tables)throw Error('Unsupported backup format');
- for(const t of persistentTables){if(!Array.isArray(snapshot.tables[t]))throw Error('Missing table: '+t);if(db.sqlite.prepare('SELECT count(*) AS n FROM '+t).get().n)throw Error('Existing data: refusing to overwrite '+t)}
+ for(const t of persistentTables){if(t==='flow_library'&&!snapshot.tables[t])snapshot.tables[t]=[];if(!Array.isArray(snapshot.tables[t]))throw Error('Missing table: '+t);if(db.sqlite.prepare('SELECT count(*) AS n FROM '+t).get().n)throw Error('Existing data: refusing to overwrite '+t)}
  db.sqlite.exec('BEGIN IMMEDIATE');
  try{for(const t of persistentTables){const columns=db.sqlite.prepare('PRAGMA table_info('+t+')').all().map(c=>c.name);const stmt=db.sqlite.prepare('INSERT INTO '+t+'('+columns.map(c=>'"'+c+'"').join(',')+') VALUES('+columns.map(()=>'?').join(',')+')');for(const row of snapshot.tables[t]){if(t==='projects'||t==='revisions')JSON.parse(row.document);stmt.run(...columns.map(c=>row[c]));}}if(db.sqlite.prepare('PRAGMA foreign_key_check').all().length)throw Error('Foreign key check failed');db.sqlite.exec('COMMIT')}catch(e){db.sqlite.exec('ROLLBACK');throw e}
 }

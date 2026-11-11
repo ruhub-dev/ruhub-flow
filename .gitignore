@@ -13,3 +13,5 @@ PUBLIC_URL.txt
 
 *.dpapi
 PERMANENT_URL.txt
+
+/dist/
