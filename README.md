@@ -60,3 +60,5 @@ npm run build
 GitHub Pages публикует только `entry/`: страницу подключения к ПК. Она читает `connection/current.json` из GitHub Raw; отдельная публикация Pages при каждом старте не требуется. Сервер Windows сам обновляет файл после проверки HTTPS-туннеля. Однократная локальная настройка — `SETUP_GITHUB.cmd`. Подробности: [PERMANENT_LINK_RU.txt](deployment/selfhost/PERMANENT_LINK_RU.txt).
 
 Проверка: `node --test tests/stable-link.test.mjs`, `npm run selfhost:build`, `npm run selfhost:test`. Токены, база и резервные копии не публикуются.
+
+Исправление запуска: готовность туннеля подтверждает cloudflared; публикацию адреса выполняет Windows PowerShell через `github-request.ps1`, используя уже сохранённый DPAPI-ключ. Подробности сетевых ошибок — `logs/link-update.log`.

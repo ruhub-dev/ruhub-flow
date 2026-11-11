@@ -12,7 +12,7 @@ if (!(Test-Path -LiteralPath (Join-Path $target 'runtime\node.exe')) -or !(Test-
 $running = Get-CimInstance Win32_Process -Filter "name='node.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($target, [StringComparison]::OrdinalIgnoreCase) -ge 0 }
 if ($running) { throw 'RUHUB Flow ещё работает. Остановите его Ctrl+C в окне запуска и повторите обновление.' }
 $payload = Join-Path $PSScriptRoot 'files'
-$allowed = @('app','public','launcher.mjs','github-publisher.mjs','SETUP_GITHUB.cmd','SETUP_GITHUB.ps1','PERMANENT_LINK_RU.txt')
+$allowed = @('app','public','launcher.mjs','github-publisher.mjs','github-request.ps1','SETUP_GITHUB.cmd','SETUP_GITHUB.ps1','PERMANENT_LINK_RU.txt')
 $actual = @(Get-ChildItem -LiteralPath $payload -Force)
 if (@($actual | Where-Object { $_.Name -notin $allowed }).Count -gt 0) { throw 'Неверный состав обновления.' }
 $backup = Join-Path $target ('updates\before-stable-link-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -31,5 +31,9 @@ foreach ($item in $actual) { Copy-Tree $item.FullName (Join-Path $target $item.N
 Write-Host ''
 Write-Host 'Обновление установлено. База data и резервные копии не изменялись.' -ForegroundColor Green
 Write-Host ('Прежние файлы программы: ' + $backup)
-Write-Host 'Сейчас откроется SETUP_GITHUB.cmd для однократного разрешения обновлять ссылку.'
-Start-Process -FilePath (Join-Path $target 'SETUP_GITHUB.cmd') -WorkingDirectory $target
+if (Test-Path -LiteralPath (Join-Path $target 'data\github-token.dpapi')) {
+    Write-Host 'Сохранённый ключ GitHub оставлен на месте. Запустите START_INTERNET.cmd.'
+} else {
+    Write-Host 'Сейчас откроется однократная настройка GitHub.'
+    Start-Process -FilePath (Join-Path $target 'SETUP_GITHUB.cmd') -WorkingDirectory $target
+}
