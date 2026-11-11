@@ -10,3 +10,6 @@ runtime/
 *.sqlite*
 PUBLIC_URL.txt
 *private*.json
+
+*.dpapi
+PERMANENT_URL.txt

@@ -51,7 +51,7 @@ const server=createServer(async(incoming,outgoing)=>{
     else if(url.pathname==='/api/project')response=await handleProject(request);
     else response=fail(404,'Адрес не найден');
    }
-  }else if(url.pathname==='/healthz'){response=Response.json({ok:true,service:'ruhub-flow-selfhost'})}
+  }else if(url.pathname==='/healthz'){response=Response.json({ok:true,service:'ruhub-flow-selfhost'},{headers:{'Access-Control-Allow-Origin':'https://ruhub-dev.github.io','Cache-Control':'no-store'}})}
   else if(!['GET','HEAD'].includes(method)){response=fail(405,'Метод недоступен')}
   else {
    const path=resolve(publicRoot,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));

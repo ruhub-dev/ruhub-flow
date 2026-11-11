@@ -54,3 +54,9 @@ npm run build
 Полный сервер SQLite и браузерная часть: `pnpm selfhost:build`. Запуск с переносимым Node.js 24: `node outputs/selfhost/launcher.mjs`. Для доступа через интернет нужен официальный cloudflared в `outputs/selfhost/runtime/cloudflared.exe`; затем `node outputs/selfhost/launcher.mjs --internet`.
 
 Подробная инструкция: [deployment/selfhost/READ_ME_RU.txt](deployment/selfhost/READ_ME_RU.txt). Runtime и личная база распространяются отдельно, в приватном Windows-комплекте. База, пароли, ссылки доступа и резервные копии в этот репозиторий не включаются. `data` сохраняется при пересборке.
+
+## Постоянная входная ссылка
+
+GitHub Pages публикует только `entry/`: страницу подключения к ПК. Она читает `connection/current.json` из GitHub Raw; отдельная публикация Pages при каждом старте не требуется. Сервер Windows сам обновляет файл после проверки HTTPS-туннеля. Однократная локальная настройка — `SETUP_GITHUB.cmd`. Подробности: [PERMANENT_LINK_RU.txt](deployment/selfhost/PERMANENT_LINK_RU.txt).
+
+Проверка: `node --test tests/stable-link.test.mjs`, `npm run selfhost:build`, `npm run selfhost:test`. Токены, база и резервные копии не публикуются.

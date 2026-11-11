@@ -1,6 +1,6 @@
 {
   "name": "ruhub-flow",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,7 +11,8 @@
     "check": "tsc --noEmit",
     "selfhost:build": "node scripts/build-selfhost.mjs",
     "selfhost:test": "node tests/selfhost.mjs",
-    "test:accounts": "node --test tests/account-access.test.mjs"
+    "test:accounts": "node --test tests/account-access.test.mjs",
+    "test:stable-link": "node --test tests/stable-link.test.mjs"
   },
   "dependencies": {
     "react": "19.2.6",
