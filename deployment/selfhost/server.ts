@@ -23,6 +23,13 @@ const handleProject=projectHandler(db);
 const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.json':'application/json; charset=utf-8'};
 const fail=(status:number,error:string)=>Response.json({error},{status,headers:{'Cache-Control':'no-store'}});
 const server=createServer(async(incoming,outgoing)=>{
+ const pagesOrigin='https://ruhub-dev.github.io';
+ const isPages=incoming.headers.origin===pagesOrigin;
+ async function send(response:Response){
+  if(isPages){response.headers.set('Access-Control-Allow-Origin',pagesOrigin);response.headers.append('Vary','Origin')}
+  response.headers.set('X-Content-Type-Options','nosniff');response.headers.set('Referrer-Policy','no-referrer');response.headers.set('X-Frame-Options','DENY');
+  outgoing.writeHead(response.status,Object.fromEntries(response.headers));outgoing.end(Buffer.from(await response.arrayBuffer()));
+ }
  let response:Response;
  try{
   const host=incoming.headers.host||'127.0.0.1:'+port;
@@ -32,21 +39,26 @@ const server=createServer(async(incoming,outgoing)=>{
   const method=incoming.method||'GET';
   if(url.pathname.startsWith('/api/')){
    if(!['GET','POST','OPTIONS'].includes(method)){response=fail(405,'Метод недоступен')}
-   else if(incoming.headers.origin&&incoming.headers.origin!==url.origin){response=fail(403,'Запрос с другого сайта запрещён')}
-   else if(method==='OPTIONS'){response=new Response(null,{status:204})}
+   else if(incoming.headers.origin&&incoming.headers.origin!==url.origin&&!isPages){response=fail(403,'Запрос с другого сайта запрещён')}
+   else if(method==='OPTIONS'){
+    const requestedMethod=incoming.headers['access-control-request-method'];
+    const requestedHeaders=String(incoming.headers['access-control-request-headers']||'').toLowerCase().split(',').map(v=>v.trim()).filter(Boolean);
+    if(!incoming.headers.origin||!['GET','POST'].includes(String(requestedMethod))||requestedHeaders.some(v=>!['authorization','content-type','x-flow-session'].includes(v)))response=fail(403,'Запрос запрещён');
+    else response=new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, X-Flow-Session','Access-Control-Max-Age':'600'}});
+   }
    else {
     const max=url.pathname.startsWith('/api/auth/')?4096:600000;
     let body:Buffer|undefined;
     if(method==='POST'){
-     if(!/^application\/json(?:;|$)/i.test(incoming.headers['content-type']||'')){outgoing.writeHead(415);outgoing.end();incoming.resume();return}
-     const chunks:Buffer[]=[];let bytes=0;for await(const chunk of incoming){bytes+=chunk.length;if(bytes>max){outgoing.writeHead(413,{'Connection':'close'});outgoing.end();return}chunks.push(chunk)}body=Buffer.concat(chunks);
+     if(!/^application\/json(?:;|$)/i.test(incoming.headers['content-type']||'')){await send(fail(415,'Нужен JSON-запрос'));incoming.resume();return}
+     const chunks:Buffer[]=[];let bytes=0;for await(const chunk of incoming){bytes+=chunk.length;if(bytes>max){await send(fail(413,'Слишком большой запрос'));return}chunks.push(chunk)}body=Buffer.concat(chunks);
     }
     const headers=new Headers();for(const [key,value] of Object.entries(incoming.headers)){if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value)}
     // cloudflared is the only non-browser caller on loopback; direct clients cannot choose a remote IP.
     headers.set('CF-Connecting-IP',incoming.headers['cf-connecting-ip'] as string||incoming.socket.remoteAddress||'local');
     const request=new Request(url,{method,headers,body:body?new Uint8Array(body):undefined});
     const action=/^\/api\/auth\/(register|login|recover)$/.exec(url.pathname)?.[1];
-    if(action)response=await authResponse(request,db,'',action as 'register'|'login'|'recover');
+    if(action)response=await authResponse(request,db,pagesOrigin,action as 'register'|'login'|'recover');
     else if(url.pathname==='/api/account')response=await handleAccount(request,db);
     else if(url.pathname==='/api/project')response=await handleProject(request);
     else response=fail(404,'Адрес не найден');
@@ -59,8 +71,7 @@ const server=createServer(async(incoming,outgoing)=>{
    else response=new Response(method==='HEAD'?null:readFileSync(path),{headers:{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':url.pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"}});
   }
  }catch(e){console.error('Request failed:',e instanceof Error?e.name:'Error');response=fail(400,'Не удалось выполнить запрос')}
- response.headers.set('X-Content-Type-Options','nosniff');response.headers.set('Referrer-Policy','no-referrer');response.headers.set('X-Frame-Options','DENY');
- outgoing.writeHead(response.status,Object.fromEntries(response.headers));outgoing.end(Buffer.from(await response.arrayBuffer()));
+ await send(response);
 });
 server.requestTimeout=20000;server.headersTimeout=10000;server.maxHeadersCount=60;
 let backupRunning=false;const timer=setInterval(async()=>{if(backupRunning)return;backupRunning=true;try{await backupDatabase(db,root);const files=readdirSync(join(root,'backups')).filter(x=>/^flow-.*\.sqlite$/.test(x)).sort();for(const old of files.slice(0,-48))unlinkSync(join(root,'backups',old));db.sqlite.prepare('DELETE FROM presence WHERE updated<?').run(Date.now()-60000);db.sqlite.prepare('DELETE FROM account_sessions WHERE expires<?').run(Date.now())}catch{console.error('Automatic backup failed')}finally{backupRunning=false}},3600000);timer.unref();

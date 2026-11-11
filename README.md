@@ -55,10 +55,8 @@ npm run build
 
 Подробная инструкция: [deployment/selfhost/READ_ME_RU.txt](deployment/selfhost/READ_ME_RU.txt). Runtime и личная база распространяются отдельно, в приватном Windows-комплекте. База, пароли, ссылки доступа и резервные копии в этот репозиторий не включаются. `data` сохраняется при пересборке.
 
-## Постоянная входная ссылка
+## Постоянный адрес в браузере
 
-GitHub Pages публикует только `entry/`: страницу подключения к ПК. Она читает `connection/current.json` из GitHub Raw; отдельная публикация Pages при каждом старте не требуется. Сервер Windows сам обновляет файл после проверки HTTPS-туннеля. Однократная локальная настройка — `SETUP_GITHUB.cmd`. Подробности: [PERMANENT_LINK_RU.txt](deployment/selfhost/PERMANENT_LINK_RU.txt).
+Интерфейс публикуется на GitHub Pages и остаётся на `https://ruhub-dev.github.io/ruhub-flow/` без перенаправления. API, аккаунты и база SQLite работают на Windows-компьютере. Адрес туннеля определяется динамически по `connection/current.json`, без пересборки сайта при каждом запуске.
 
-Проверка: `node --test tests/stable-link.test.mjs`, `npm run selfhost:build`, `npm run selfhost:test`. Токены, база и резервные копии не публикуются.
-
-Исправление запуска: готовность туннеля подтверждает cloudflared; публикацию адреса выполняет Windows PowerShell через `github-request.ps1`, используя уже сохранённый DPAPI-ключ. Подробности сетевых ошибок — `logs/link-update.log`.
+Сервер разрешает внешние запросы только с точного origin GitHub Pages; авторизация и роли не меняются. Настроенный DPAPI-ключ сохраняется. Инструкция: [PERMANENT_LINK_RU.txt](deployment/selfhost/PERMANENT_LINK_RU.txt).

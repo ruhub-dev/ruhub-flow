@@ -32,6 +32,7 @@ export default function AccountShell({renderDiagram}:{renderDiagram:(account?:Ac
   token.current=localStorage.getItem(TOKEN_KEY)||'';
   if(token.current){const data=await request();setUser(data.user);setProjects(data.projects);if(pending.current){await attach(pending.current);open(pending.current)}}
  }catch(e:any){setError(e.message||'Не удалось открыть кабинет');setConfigured(true)}})()},[]);
+ useEffect(()=>{const changed=()=>{if(token.current)void refresh()};window.addEventListener('flow-backend-changed',changed);return()=>window.removeEventListener('flow-backend-changed',changed)},[]);
  useEffect(()=>{const listener=(e:StorageEvent)=>{if(e.key===TOKEN_KEY&&e.newValue!==token.current){token.current=e.newValue||'';setUser(null);setProjects([]);setScreen('home');if(token.current)void refresh()}};window.addEventListener('storage',listener);return()=>window.removeEventListener('storage',listener)},[]);
  if(configured===null)return <div className="account-loading"><img src={BASE+'ruhub-logo.png'} alt="RUHUB"/><p>Открываем рабочее пространство…</p></div>;
  if(user&&screen==='editor')return <div key={generation}>{renderDiagram({user,sessionToken:token.current,onExpired:()=>{localStorage.removeItem(TOKEN_KEY);token.current='';setUser(null);setProjects([]);setScreen('home');setError('Сессия истекла. Войдите снова: несохранённые изменения остались на устройстве.')},onDashboard:()=>{setScreen('home');history.replaceState(null,'',BASE);void refresh()},onOpened:async p=>{await attach(p)},onCreate:create})}</div>;
