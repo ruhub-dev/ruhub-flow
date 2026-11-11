@@ -48,6 +48,11 @@ try{
  const login=await call('/api/auth/login',{headers:{Origin:pages},body:{username:'QA-SELFHOST-A@EXAMPLE.TEST',password}});assert.equal(login.status,200);
  const recovery=await call('/api/auth/recover',{body:{username:'qa-selfhost-a@example.test',password:'new12345',recovery:a.data.recovery}});assert.equal(recovery.status,200);assert.equal((await call(path,{key:p.key,session:owner})).status,401);
  assert.equal((await call(path,{key:p.key,session:recovery.data.token,body:{action:'share',rotate:true}})).status,200);assert.equal((await call(path,{key:editor,session:guest})).status,403);assert.equal((await call('/api/account',{token:guest})).data.projects.length,0);
+ const disposable=(await call('/api/account',{token:recovery.data.token,body:{action:'create',document:{title:'Delete route test',nodes:{},edges:{}}}})).data.project;
+ assert.equal((await call('/api/account',{token:guest,body:{action:'delete',id:disposable.id,key:disposable.key}})).status,403);
+ assert.equal((await call('/api/account',{token:recovery.data.token,body:{action:'delete',id:disposable.id,key:disposable.key}})).status,200);
+ assert.equal((await call('/api/project?id='+disposable.id,{key:disposable.key,session:recovery.data.token})).status,403);
+ assert((await call('/api/library',{token:guest})).data.items.some(x=>x.template.model===sharedTemplate.model));
  await stop();const db=new DatabaseSync(join(root,'data/flow.sqlite'));assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0);db.close();assert(readdirSync(join(root,'backups')).filter(x=>x.endsWith('.sqlite')).length>=2);
- console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; shared library persistence; concurrent output exclusivity; restart persistence; recovery; link revocation; backups.');
+ console.log('PASS: imported database integrity; static isolation; same-origin policy; email login; account isolation; owner/editor/viewer access; editing; shared library persistence; concurrent output exclusivity; restart persistence; recovery; link revocation; project deletion; backups.');
 }finally{await stop();rmSync(root,{recursive:true,force:true})}

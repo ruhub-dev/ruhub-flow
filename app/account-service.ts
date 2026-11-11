@@ -29,6 +29,22 @@ export async function handleAccount(req:Request,db:any){
   await db.prepare('INSERT INTO project_accounts(project,user_id,access_key,created) VALUES(?,?,?,?) ON CONFLICT(project,user_id) DO UPDATE SET access_key=excluded.access_key').bind(b.id,user.id,key,new Date().toISOString()).run();
   return json({ok:true});
  }
+ if(b.action==='delete'){
+  if(typeof b.id!=='string'||typeof b.key!=='string')return json({error:'Неверный проект'},400);
+  const row=await db.prepare('SELECT * FROM projects WHERE id=?').bind(b.id).first();
+  if(!row)return json({error:'Проект уже удалён или недоступен'},404);
+  const owner=await db.prepare('SELECT user_id FROM account_owned_projects WHERE project=?').bind(b.id).first();
+  const saved=await db.prepare('SELECT access_key FROM project_accounts WHERE project=? AND user_id=?').bind(b.id,user.id).first();
+  if(b.key!==row.owner||(owner?owner.user_id!==user.id:!saved||saved.access_key!==row.owner))return json({error:'Удалить проект для всех может только его владелец'},403);
+  await db.batch([
+   db.prepare('DELETE FROM project_accounts WHERE project=?').bind(b.id),
+   db.prepare('DELETE FROM account_owned_projects WHERE project=?').bind(b.id),
+   db.prepare('DELETE FROM presence WHERE project=?').bind(b.id),
+   db.prepare('DELETE FROM revisions WHERE project=?').bind(b.id),
+   db.prepare('DELETE FROM projects WHERE id=?').bind(b.id)
+  ]);
+  return json({ok:true});
+ }
  if(b.action==='remove'){
   if(typeof b.id!=='string')return json({error:'Неверный проект'},400);
   await db.prepare('DELETE FROM project_accounts WHERE project=? AND user_id=?').bind(b.id,user.id).run();return json({ok:true});

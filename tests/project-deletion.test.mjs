@@ -1,0 +1,30 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {database} from './sqlite-db.mjs';
+import {localAuth} from '../app/local-auth.ts';
+import {handleAccount} from '../app/account-service.ts';
+
+test('Only the account owner can delete a project; detach affects only the invited account; deletion removes related data',async()=>{
+ const db=database(),owner=await localAuth('register',{username:'deletion-owner',password:'test1234'},db,'one'),guest=await localAuth('register',{username:'deletion-guest',password:'test1234'},db,'two');
+ const call=async(token,body)=>{const response=await handleAccount(new Request('https://flow.test/api/account',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token},body:body?JSON.stringify(body):undefined}),db);return {status:response.status,data:await response.json()}};
+ const create=async title=>(await call(owner.token,{action:'create',document:{title,nodes:{},edges:{}}})).data.project;
+ const p=await create('Delete this'),keep=await create('Keep this'),row=db.sqlite.prepare('SELECT * FROM projects WHERE id=?').get(p.id);
+ await call(guest.token,{action:'attach',id:p.id,key:row.editor});
+ for(const key of [row.editor,row.viewer,p.key])assert.equal((await call(guest.token,{action:'delete',id:p.id,key})).status,403);
+ assert.equal((await call('invalid',{action:'delete',id:p.id,key:p.key})).status,401);
+ assert.equal((await call(owner.token,{action:'delete',id:p.id,key:row.editor})).status,403);
+ assert.equal((await call(guest.token,{action:'remove',id:p.id})).status,200);
+ assert.equal((await call(guest.token)).data.projects.length,0);
+ assert(db.sqlite.prepare('SELECT id FROM projects WHERE id=?').get(p.id));
+ await call(guest.token,{action:'attach',id:p.id,key:row.viewer});
+ db.sqlite.prepare('INSERT INTO presence VALUES(?,?,?,?)').run('online',p.id,'Engineer',Date.now());
+ db.sqlite.prepare('INSERT INTO revisions VALUES(?,?,?,?,?,?)').run('revision',p.id,row.document,1,'Owner','now');
+ assert.equal((await call(owner.token,{action:'delete',id:p.id,key:p.key})).status,200);
+ for(const table of ['project_accounts','account_owned_projects','presence','revisions'])assert.equal(db.sqlite.prepare('SELECT count(*) AS n FROM '+table+' WHERE project=?').get(p.id).n,0);
+ assert.equal(db.sqlite.prepare('SELECT id FROM projects WHERE id=?').get(p.id),undefined);
+ assert(db.sqlite.prepare('SELECT id FROM projects WHERE id=?').get(keep.id));
+ assert.equal((await call(guest.token)).data.projects.length,0);
+ assert.equal((await call(guest.token,{action:'attach',id:p.id,key:row.viewer})).status,403);
+ assert.equal((await call(owner.token,{action:'delete',id:p.id,key:p.key})).status,404);
+ assert.equal(db.sqlite.prepare('PRAGMA foreign_key_check').all().length,0);
+});

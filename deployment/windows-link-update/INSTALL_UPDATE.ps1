@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
 Add-Type -AssemblyName System.Windows.Forms
-Write-Host 'Обновление RUHUB Flow 3.0: сенсорное управление и общая библиотека' -ForegroundColor Cyan
+Write-Host 'Обновление RUHUB Flow 3.0.1: мобильная версия, библиотека и удаление схем' -ForegroundColor Cyan
 Write-Host 'Сначала остановите прежний START_INTERNET.cmd сочетанием Ctrl+C.'
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
 $dialog.Description = 'Выберите существующую папку RUHUB-Flow (в ней лежат START_INTERNET.cmd, data и runtime)'
