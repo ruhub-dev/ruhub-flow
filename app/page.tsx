@@ -4,7 +4,7 @@ import {Activity,Search,Plus,Share2,ChevronDown,ChevronRight,MousePointer2,Hand,
 import {Doc,Device,Cable,CableRoute,Port,Op,library,colors,cableColor,example,apply,uid,canConnect,connectorOf} from './model';
 import {deviceWidth,resizeRect} from './geometry';
 import {LayoutCache,CableLayoutCache,portUsage,portPoint} from './diagram-layout';
-import {frameQueue} from './frame-queue';
+import {frameQueue,trackPointer} from './frame-queue';
 import DeviceNode,{type NodeActions} from './device-node';
 import CableView from './cable-view';
 type Movement=Pick<React.PointerEvent,'pointerId'|'pointerType'|'clientX'|'clientY'>;
@@ -44,7 +44,7 @@ const [compact,setCompact]=useState(false),[touchInput,setTouchInput]=useState(f
 const touches=useRef(new Map<number,TouchPoint>()),pinch=useRef<Pinch|null>(null),gestureClickBlockedUntil=useRef(0);
 const moveHandler=useRef<(e:Movement)=>void>(()=>{}),moveQueue=useMemo(()=>frameQueue<Movement>(e=>moveHandler.current(e)),[]);moveHandler.current=move;
 useEffect(()=>()=>moveQueue.cancel(),[moveQueue]);
-function queueMove(e:React.PointerEvent){if(!drag.current&&!pinch.current&&!touches.current.has(e.pointerId))return;if(e.pointerType==='touch')e.preventDefault();moveQueue.push({pointerId:e.pointerId,pointerType:e.pointerType,clientX:e.clientX,clientY:e.clientY})}
+function queueMove(e:React.PointerEvent){if(!drag.current&&!pinch.current&&!touches.current.has(e.pointerId))return;trackPointer(touches.current,e);if(e.pointerType==='touch')e.preventDefault();moveQueue.push({pointerId:e.pointerId,pointerType:e.pointerType,clientX:e.clientX,clientY:e.clientY})}
 
 useEffect(()=>{const media=matchMedia('(max-width:1100px), (pointer:coarse)'),coarse=matchMedia('(pointer:coarse)');const update=()=>{setCompact(media.matches);setTouchInput(coarse.matches);if(!media.matches)setPanel(null)};update();media.addEventListener('change',update);coarse.addEventListener('change',update);return()=>{media.removeEventListener('change',update);coarse.removeEventListener('change',update)}},[]);
 
@@ -263,7 +263,7 @@ function setRoute(style:CableRoute['style']){if(!cable||!editable)return;commit(
 function newWirePath(){if(!newWire)return '';const n=doc.nodes[newWire.origin.node],p=n?.ports.find(p=>p.id===newWire.origin.port);if(!n||!p)return '';const a=point(n,p.id),b={x:newWire.x,y:newWire.y};return cableGeometry(p.dir==='out'?a:b,p.dir==='out'?b:a).path}
 function fit(){const bounds=Object.values(docRef.current.edges).filter(e=>doc.nodes[e.from]&&doc.nodes[e.to]).flatMap(e=>geometry(e).bounds);const nodes=Object.values(docRef.current.nodes);if(!nodes.length){setZoom(.8);setPan({x:80,y:80});return}const r=scene.current!.getBoundingClientRect(),minX=Math.min(...nodes.map(n=>n.x),...bounds.map(p=>p.x)),minY=Math.min(...nodes.map(n=>n.y),...bounds.map(p=>p.y)),w=Math.max(...nodes.map(n=>n.x+deviceWidth(n)),...bounds.map(p=>p.x))-minX,h=Math.max(...nodes.map(n=>n.y+height(n)),...bounds.map(p=>p.y))-minY,z=Math.max(.2,Math.min(1.2,(r.width-80)/w,(r.height-130)/h));setZoom(z);setPan({x:(r.width-w*z)/2-minX*z,y:(r.height-h*z)/2-minY*z})}
 function move(e:Movement){
- if(touches.current.has(e.pointerId))touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ trackPointer(touches.current,e);
  if(pinch.current&&touches.current.size>=2){const points=[...touches.current.values()],r=scene.current!.getBoundingClientRect();updateViewport(pinchViewport(pinch.current,points[0],points[1],{x:r.left,y:r.top}));return}
  const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;
  if(d.kind==='new-wire'){

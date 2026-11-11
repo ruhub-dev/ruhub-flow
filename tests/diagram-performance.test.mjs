@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {library,makeDevice,example,apply} from '../app/model.ts';
 import {deviceLayout,portPoint,portUsage,LayoutCache,CableLayoutCache} from '../app/diagram-layout.ts';
 import {deviceWidth} from '../app/geometry.ts';
-import {frameQueue} from '../app/frame-queue.ts';
+import {frameQueue,trackPointer} from '../app/frame-queue.ts';
+import {startPinch,pinchViewport} from '../app/touch-viewport.ts';
 
 function original(n,used,expanded){const visible=expanded?n.ports:n.ports.filter(p=>used.has(p.id)||n.ports.filter(q=>q.dir===p.dir).indexOf(p)<4),rows=Math.max(1,visible.filter(p=>p.dir==='in').length,visible.filter(p=>p.dir==='out').length),minHeight=88+rows*22+(n.ports.length>8?28:0),height=Math.max(n.height??88+rows*27+(n.ports.length>8?28:0),minHeight),step=(height-88-(n.ports.length>8?28:0))/rows;return {visible,rows,minHeight,height,step,point(id){const p=n.ports.find(p=>p.id===id);if(!p)return {x:n.x,y:n.y};const list=visible.filter(x=>x.dir===p.dir);return {x:n.x+(p.dir==='in'?0:deviceWidth(n)),y:n.y+73+step/2+Math.max(0,list.findIndex(x=>x.id===id))*step}}}}
 test('Optimized layout keeps exact port coordinates, visibility and dimensions for all device profiles',()=>{
@@ -34,4 +35,10 @@ test('Editing one object preserves unchanged references without modifying the pr
  const ports=[{id:'replacement',label:'SDI',dir:'out',type:'SDI'}],configured=apply(d,[{kind:'node',id:nodes[0].id,value:{ports}}]);
  ports[0].label='Changed after commit';assert.equal(configured.nodes[nodes[0].id].ports[0].label,'SDI');assert.deepEqual(d,snapshot);
  assert.equal(Object.values(configured.edges).filter(e=>e.from===nodes[0].id).length,0);
+});
+test('Coalescing a frame retains both fingers of a pinch gesture',()=>{
+ const points=new Map([[1,{x:0,y:0}],[2,{x:100,y:0}]]),view={zoom:1,pan:{x:0,y:0}},start=startPinch(points.get(1),points.get(2),view,{x:0,y:0});let result;
+ const q=frameQueue(()=>{result=pinchViewport(start,points.get(1),points.get(2),{x:0,y:0})},()=>1,()=>{});
+ for(const e of [{pointerId:1,clientX:-50,clientY:0},{pointerId:2,clientX:150,clientY:0}]){trackPointer(points,e);q.push(e)}
+ q.flush();assert.equal(result.zoom,2);assert.equal(result.pan.x,-50);assert.equal(points.get(1).x,-50);
 });
