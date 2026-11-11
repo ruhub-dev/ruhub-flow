@@ -15,12 +15,12 @@ export const connectorOptions=['BNC','HDMI-A','HDMI-mini','DisplayPort','RJ45','
 export function connectorOf(p:Port):string{return p.connector||({SDI:'BNC',HDMI:'HDMI-A',Audio:'XLR-3',LAN:'RJ45',USB:'USB-C',Sync:'BNC',Power:'IEC'}[p.type]||p.type)}
 export function canConnect(a:Port,b:Port):boolean{return a.dir!==b.dir&&a.type===b.type&&connectorOf(a)===connectorOf(b)}
 export function apply(doc:Doc,ops:Op[]):Doc{
- const d=structuredClone(doc),reconfigured=new Set<string>();
+ const d:Doc={...doc,nodes:{...doc.nodes},edges:{...doc.edges}},reconfigured=new Set<string>();
  for(const o of ops){
   if(o.kind==='title'){d.title=String(o.value).slice(0,120);continue}
   const map=o.kind==='node'?d.nodes:d.edges,id=o.id!;
   if(o.remove){delete map[id];if(o.kind==='node')for(const [key,e] of Object.entries(d.edges))if(e.from===id||e.to===id)delete d.edges[key]}
-  else if(map[id])map[id]={...map[id],...o.value};else if(o.value?.id===id)map[id]=o.value;
+  else {const value=structuredClone(o.value);if(map[id])map[id]={...map[id],...value};else if(value?.id===id)map[id]=value;}
   if(o.kind==='node'&&o.value?.ports)reconfigured.add(id);
  }
  // Only configuration changes prune affected existing cables. Invalid new cables
